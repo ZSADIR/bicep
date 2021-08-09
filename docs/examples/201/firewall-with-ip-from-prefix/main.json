@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "12072048631897717900"
+      "templateHash": "16778702392789169522"
     }
   },
   "parameters": {
@@ -57,8 +57,8 @@
     "publicipname": "[format('{0}-pip', parameters('vnetname'))]",
     "ipprefixname": "[format('{0}-ipprefix', parameters('vnetname'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "vnet": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-05-01",
       "name": "[parameters('vnetname')]",
@@ -79,7 +79,7 @@
         ]
       }
     },
-    {
+    "ipprefix": {
       "type": "Microsoft.Network/publicIPPrefixes",
       "apiVersion": "2020-05-01",
       "name": "[variables('ipprefixname')]",
@@ -93,7 +93,7 @@
         "ipTags": []
       }
     },
-    {
+    "publicip": {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2020-05-01",
       "name": "[variables('publicipname')]",
@@ -104,14 +104,14 @@
       "properties": {
         "publicIPAllocationMethod": "Static",
         "publicIPPrefix": {
-          "id": "[resourceId('Microsoft.Network/publicIPPrefixes', variables('ipprefixname'))]"
+          "id": "[resourceInfo('ipprefix').id]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPPrefixes', variables('ipprefixname'))]"
+        "ipprefix"
       ]
     },
-    {
+    "firewall": {
       "type": "Microsoft.Network/azureFirewalls",
       "apiVersion": "2020-05-01",
       "name": "[variables('firewallname')]",
@@ -123,19 +123,19 @@
             "name": "[format('{0}-vnetIpconf', variables('firewallname'))]",
             "properties": {
               "subnet": {
-                "id": "[format('{0}/subnets/AzureFirewallSubnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetname')))]"
+                "id": "[format('{0}/subnets/AzureFirewallSubnet', resourceInfo('vnet').id)]"
               },
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicipname'))]"
+                "id": "[resourceInfo('publicip').id]"
               }
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicipname'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetname'))]"
+        "publicip",
+        "vnet"
       ]
     }
-  ]
+  }
 }

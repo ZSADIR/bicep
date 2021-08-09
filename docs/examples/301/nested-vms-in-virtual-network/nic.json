@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "17428818831523905567"
+      "templateHash": "10580980010374758392"
     }
   },
   "parameters": {
@@ -41,8 +41,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "nic": {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2020-06-01",
       "name": "[parameters('nicName')]",
@@ -65,15 +65,15 @@
         "enableIPForwarding": "[parameters('enableIPForwarding')]"
       }
     }
-  ],
+  },
   "outputs": {
     "nicId": {
       "type": "string",
-      "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+      "value": "[resourceInfo('nic').id]"
     },
     "assignedIp": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))).ipConfigurations[0].properties.privateIPAddress]"
+      "value": "[reference('nic').ipConfigurations[0].properties.privateIPAddress]"
     }
   }
 }

@@ -101,24 +101,20 @@ namespace Bicep.Core.Emit
             writer.WriteValue(serialized);
         }
 
-        public void EmitResourceIdReference(ResourceMetadata resource, SyntaxBase? indexExpression, SyntaxBase newContext)
+        public void EmitDependsOnArrayItem(ResourceMetadata resource, SyntaxBase indexExpression, SyntaxBase newContext)
         {
-            var converterForContext = this.converter.CreateConverterForIndexReplacement(resource.NameSyntax, indexExpression, newContext);
+            var expression = converter.CreateConverterForIndexReplacement(resource.NameSyntax, indexExpression, newContext)
+                .GenerateSymbolArrayAccess(resource.Symbol.Name, indexExpression);
 
-            var resourceIdExpression = converterForContext.GetFullyQualifiedResourceId(resource);
-            var serialized = ExpressionSerializer.SerializeExpression(resourceIdExpression);
-
-            writer.WriteValue(serialized);
+            writer.WriteValue(ExpressionSerializer.SerializeExpression(expression));
         }
 
-        public void EmitResourceIdReference(ModuleSymbol moduleSymbol, SyntaxBase? indexExpression, SyntaxBase newContext)
+        public void EmitDependsOnArrayItem(ModuleSymbol moduleSymbol, SyntaxBase indexExpression, SyntaxBase newContext)
         {
-            var converterForContext = this.converter.CreateConverterForIndexReplacement(ExpressionConverter.GetModuleNameSyntax(moduleSymbol), indexExpression, newContext);
+            var expression = converter.CreateConverterForIndexReplacement(ExpressionConverter.GetModuleNameSyntax(moduleSymbol), indexExpression, newContext)
+                .GenerateSymbolArrayAccess(moduleSymbol.Name, indexExpression);
 
-            var resourceIdExpression = converterForContext.GetFullyQualifiedResourceId(moduleSymbol);
-            var serialized = ExpressionSerializer.SerializeExpression(resourceIdExpression);
-
-            writer.WriteValue(serialized);
+            writer.WriteValue(ExpressionSerializer.SerializeExpression(expression));
         }
 
         public LanguageExpression GetFullyQualifiedResourceName(ResourceMetadata resource)

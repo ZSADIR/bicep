@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "2914496037611283856"
+      "templateHash": "2885637119601917129"
     }
   },
   "parameters": {
@@ -36,8 +36,8 @@
       }
     ]
   },
-  "resources": [
-    {
+  "resources": {
+    "apiManagementNVPair": {
       "copy": {
         "name": "apiManagementNVPair",
         "count": "[length(variables('apimNameValueSet'))]"
@@ -52,15 +52,15 @@
         "tags": "[variables('apimNameValueSet')[copyIndex()].tags]"
       }
     }
-  ],
+  },
   "outputs": {
     "apimNameValues": {
       "type": "array",
       "copy": {
         "count": "[length(variables('apimNameValueSet'))]",
         "input": {
-          "nameValueId": "[resourceId('Microsoft.ApiManagement/service/namedValues', parameters('apimInstanceName'), variables('apimNameValueSet')[copyIndex()].displayName)]",
-          "nameValueName": "[variables('apimNameValueSet')[copyIndex()].displayName]"
+          "nameValueId": "[resourceInfo(format('apiManagementNVPair[{0}]', copyIndex())).id]",
+          "nameValueName": "[resourceInfo(format('apiManagementNVPair[{0}]', copyIndex())).name]"
         }
       }
     }

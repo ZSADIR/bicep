@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "9592777238542559736"
+      "templateHash": "15775280395510632652"
     }
   },
   "parameters": {
@@ -114,8 +114,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "keyvault": {
       "type": "Microsoft.KeyVault/vaults",
       "apiVersion": "2019-09-01",
       "name": "[parameters('vaultName')]",
@@ -135,10 +135,10 @@
         "networkAcls": "[parameters('networkAcls')]"
       }
     },
-    {
+    "key": {
       "type": "Microsoft.KeyVault/vaults/keys",
       "apiVersion": "2019-09-01",
-      "name": "[format('{0}/{1}', parameters('vaultName'), parameters('keyName'))]",
+      "name": "[format('{0}/{1}', resourceInfo('keyvault').name, parameters('keyName'))]",
       "properties": {
         "kty": "RSA",
         "keyOps": [
@@ -148,25 +148,25 @@
         "keySize": 4096
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', parameters('vaultName'))]"
+        "keyvault"
       ]
     },
-    {
+    "secret": {
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2018-02-14",
-      "name": "[format('{0}/{1}', parameters('vaultName'), parameters('secretName'))]",
+      "name": "[format('{0}/{1}', resourceInfo('keyvault').name, parameters('secretName'))]",
       "properties": {
         "value": "[parameters('secretValue')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', parameters('vaultName'))]"
+        "keyvault"
       ]
     }
-  ],
+  },
   "outputs": {
     "proxyKey": {
       "type": "object",
-      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/keys', split(format('{0}/{1}', parameters('vaultName'), parameters('keyName')), '/')[0], split(format('{0}/{1}', parameters('vaultName'), parameters('keyName')), '/')[1]), '2019-09-01', 'full')]"
+      "value": "[reference('key', '2019-09-01', 'full')]"
     }
   }
 }

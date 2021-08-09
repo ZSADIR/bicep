@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "5815269331084315095"
+      "templateHash": "5699618242791534712"
     }
   },
   "parameters": {
@@ -30,8 +30,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "service": {
       "type": "Microsoft.AppPlatform/Spring",
       "apiVersion": "2019-05-01-preview",
       "name": "[parameters('serviceName')]",
@@ -50,21 +50,21 @@
         }
       }
     },
-    {
+    "app1": {
       "type": "Microsoft.AppPlatform/Spring/apps",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/{1}', parameters('serviceName'), parameters('app1Name'))]",
+      "name": "[format('{0}/{1}', resourceInfo('service').name, parameters('app1Name'))]",
       "properties": {
         "public": true
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring', parameters('serviceName'))]"
+        "service"
       ]
     },
-    {
+    "app1deployment": {
       "type": "Microsoft.AppPlatform/Spring/apps/deployments",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app1Name')))]",
+      "name": "[format('{0}/default', resourceInfo('app1').name)]",
       "properties": {
         "source": {
           "relativePath": "<default>",
@@ -72,24 +72,24 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app1Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app1Name')), '/')[1])]"
+        "app1"
       ]
     },
-    {
+    "app2": {
       "type": "Microsoft.AppPlatform/Spring/apps",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/{1}', parameters('serviceName'), parameters('app2Name'))]",
+      "name": "[format('{0}/{1}', resourceInfo('service').name, parameters('app2Name'))]",
       "properties": {
         "public": false
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring', parameters('serviceName'))]"
+        "service"
       ]
     },
-    {
+    "app2deployment": {
       "type": "Microsoft.AppPlatform/Spring/apps/deployments",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app2Name')))]",
+      "name": "[format('{0}/default', resourceInfo('app2').name)]",
       "properties": {
         "source": {
           "relativePath": "<default>",
@@ -97,24 +97,24 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app2Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app2Name')), '/')[1])]"
+        "app2"
       ]
     },
-    {
+    "app3": {
       "type": "Microsoft.AppPlatform/Spring/apps",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/{1}', parameters('serviceName'), parameters('app3Name'))]",
+      "name": "[format('{0}/{1}', resourceInfo('service').name, parameters('app3Name'))]",
       "properties": {
         "public": false
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring', parameters('serviceName'))]"
+        "service"
       ]
     },
-    {
+    "app3deployment": {
       "type": "Microsoft.AppPlatform/Spring/apps/deployments",
       "apiVersion": "2020-07-01",
-      "name": "[format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app3Name')))]",
+      "name": "[format('{0}/default', resourceInfo('app3').name)]",
       "properties": {
         "source": {
           "relativePath": "<default>",
@@ -122,10 +122,10 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app3Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app3Name')), '/')[1])]"
+        "app3"
       ]
     },
-    {
+    "activeDeployment": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "setActiveDeployment",
@@ -136,13 +136,13 @@
         "mode": "Incremental",
         "parameters": {
           "app1Name": {
-            "value": "[format('{0}/{1}', parameters('serviceName'), parameters('app1Name'))]"
+            "value": "[resourceInfo('app1').name]"
           },
           "app2Name": {
-            "value": "[format('{0}/{1}', parameters('serviceName'), parameters('app2Name'))]"
+            "value": "[resourceInfo('app2').name]"
           },
           "app3Name": {
-            "value": "[format('{0}/{1}', parameters('serviceName'), parameters('app3Name'))]"
+            "value": "[resourceInfo('app3').name]"
           }
         },
         "template": {
@@ -152,7 +152,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "14716049199041538326"
+              "templateHash": "6069591695666350609"
             }
           },
           "parameters": {
@@ -167,8 +167,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "app1": {
               "type": "Microsoft.AppPlatform/Spring/apps",
               "apiVersion": "2020-07-01",
               "name": "[parameters('app1Name')]",
@@ -177,7 +177,7 @@
                 "activeDeploymentName": "default"
               }
             },
-            {
+            "app2": {
               "type": "Microsoft.AppPlatform/Spring/apps",
               "apiVersion": "2020-07-01",
               "name": "[parameters('app2Name')]",
@@ -186,7 +186,7 @@
                 "activeDeploymentName": "default"
               }
             },
-            {
+            "app3": {
               "type": "Microsoft.AppPlatform/Spring/apps",
               "apiVersion": "2020-07-01",
               "name": "[parameters('app3Name')]",
@@ -195,17 +195,17 @@
                 "activeDeploymentName": "default"
               }
             }
-          ]
+          }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app1Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app1Name')), '/')[1])]",
-        "[resourceId('Microsoft.AppPlatform/Spring/apps/deployments', split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app1Name'))), '/')[0], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app1Name'))), '/')[1], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app1Name'))), '/')[2])]",
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app2Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app2Name')), '/')[1])]",
-        "[resourceId('Microsoft.AppPlatform/Spring/apps/deployments', split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app2Name'))), '/')[0], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app2Name'))), '/')[1], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app2Name'))), '/')[2])]",
-        "[resourceId('Microsoft.AppPlatform/Spring/apps', split(format('{0}/{1}', parameters('serviceName'), parameters('app3Name')), '/')[0], split(format('{0}/{1}', parameters('serviceName'), parameters('app3Name')), '/')[1])]",
-        "[resourceId('Microsoft.AppPlatform/Spring/apps/deployments', split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app3Name'))), '/')[0], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app3Name'))), '/')[1], split(format('{0}/default', format('{0}/{1}', parameters('serviceName'), parameters('app3Name'))), '/')[2])]"
+        "app1",
+        "app1deployment",
+        "app2",
+        "app2deployment",
+        "app3",
+        "app3deployment"
       ]
     }
-  ]
+  }
 }

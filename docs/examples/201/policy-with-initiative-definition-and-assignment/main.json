@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "11769852566665193630"
+      "templateHash": "13333305592948742531"
     }
   },
   "parameters": {
@@ -37,8 +37,8 @@
   "variables": {
     "initiativeDefinitionName": "BICEP Example Initiative"
   },
-  "resources": [
-    {
+  "resources": {
+    "initiativeDefinition": {
       "type": "Microsoft.Authorization/policySetDefinitions",
       "apiVersion": "2019-09-01",
       "name": "[variables('initiativeDefinitionName')]",
@@ -95,14 +95,14 @@
         ]
       }
     },
-    {
+    "initiativeDefinitionPolicyAssignment": {
       "type": "Microsoft.Authorization/policyAssignments",
       "apiVersion": "2019-09-01",
       "name": "[variables('initiativeDefinitionName')]",
       "properties": {
         "scope": "[subscription().id]",
         "enforcementMode": "Default",
-        "policyDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', variables('initiativeDefinitionName'))]",
+        "policyDefinitionId": "[resourceInfo('initiativeDefinition').id]",
         "parameters": {
           "listOfAllowedLocations": {
             "value": "[parameters('listOfAllowedLocations')]"
@@ -113,8 +113,8 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', variables('initiativeDefinitionName'))]"
+        "initiativeDefinition"
       ]
     }
-  ]
+  }
 }

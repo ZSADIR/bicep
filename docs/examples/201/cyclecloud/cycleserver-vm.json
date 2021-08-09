@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "18400785887121746615"
+      "templateHash": "4797921512190084614"
     }
   },
   "parameters": {
@@ -28,8 +28,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "pip": {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2020-05-01",
       "name": "cycleserver-pip",
@@ -38,7 +38,7 @@
         "publicIPAllocationMethod": "Dynamic"
       }
     },
-    {
+    "nic": {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2020-05-01",
       "name": "cycleserver-nic",
@@ -53,17 +53,17 @@
                 "id": "[parameters('subnetId')]"
               },
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'cycleserver-pip')]"
+                "id": "[resourceInfo('pip').id]"
               }
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', 'cycleserver-pip')]"
+        "pip"
       ]
     },
-    {
+    "vm": {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2020-06-01",
       "name": "cycleserver",
@@ -112,14 +112,14 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'cycleserver-nic')]"
+              "id": "[resourceInfo('nic').id]"
             }
           ]
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkInterfaces', 'cycleserver-nic')]"
+        "nic"
       ]
     }
-  ]
+  }
 }

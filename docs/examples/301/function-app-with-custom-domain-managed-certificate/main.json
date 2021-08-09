@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "2360471420895317911"
+      "templateHash": "8332006656928999056"
     }
   },
   "parameters": {
@@ -24,8 +24,8 @@
     "location": "[resourceGroup().location]",
     "componentBase": "[format('{0}-{1}', substring(uniqueString(resourceGroup().id), 4), parameters('applicationName'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "hostingPlan": {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2020-06-01",
       "name": "[format('{0}-asp', variables('componentBase'))]",
@@ -38,7 +38,7 @@
         "capacity": 0
       }
     },
-    {
+    "storage": {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2019-06-01",
       "name": "[format('{0}st', replace(variables('componentBase'), '-', ''))]",
@@ -48,7 +48,7 @@
         "name": "Standard_LRS"
       }
     },
-    {
+    "appInsights": {
       "type": "Microsoft.Insights/components",
       "apiVersion": "2015-05-01",
       "name": "[format('{0}-ai', variables('componentBase'))]",
@@ -58,7 +58,7 @@
         "Application_Type": "web"
       }
     },
-    {
+    "functionApp": {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2020-06-01",
       "name": "[format('{0}-functionapp', variables('componentBase'))]",
@@ -69,7 +69,7 @@
       },
       "properties": {
         "httpsOnly": true,
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-asp', variables('componentBase')))]",
+        "serverFarmId": "[resourceInfo('hostingPlan').id]",
         "clientAffinityEnabled": false,
         "siteConfig": {
           "http20Enabled": true,
@@ -91,19 +91,19 @@
             },
             {
               "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
-              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('componentBase')))).InstrumentationKey]"
+              "value": "[reference('appInsights').InstrumentationKey]"
             },
             {
               "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-              "value": "[format('InstrumentationKey={0}', reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('componentBase')))).InstrumentationKey)]"
+              "value": "[format('InstrumentationKey={0}', reference('appInsights').InstrumentationKey)]"
             },
             {
               "name": "AzureWebJobsStorage",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}st', replace(variables('componentBase'), '-', '')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}st', replace(variables('componentBase'), '-', ''))), '2019-06-01').keys[0].value)]"
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', resourceInfo('storage').name, environment().suffixes.storage, listKeys(resourceInfo('storage').id, resourceInfo('storage').apiVersion).keys[0].value)]"
             },
             {
               "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}st', replace(variables('componentBase'), '-', '')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}st', replace(variables('componentBase'), '-', ''))), '2019-06-01').keys[0].value)]"
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', resourceInfo('storage').name, environment().suffixes.storage, listKeys(resourceInfo('storage').id, resourceInfo('storage').apiVersion).keys[0].value)]"
             },
             {
               "name": "WEBSITE_CONTENTSHARE",
@@ -113,12 +113,12 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Insights/components', format('{0}-ai', variables('componentBase')))]",
-        "[resourceId('Microsoft.Web/serverfarms', format('{0}-asp', variables('componentBase')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}st', replace(variables('componentBase'), '-', '')))]"
+        "appInsights",
+        "hostingPlan",
+        "storage"
       ]
     },
-    {
+    "dnsTxt": {
       "type": "Microsoft.Network/dnsZones/TXT",
       "apiVersion": "2018-05-01",
       "name": "[format('{0}/asuid.{1}', parameters('dnsZone'), parameters('applicationName'))]",
@@ -127,60 +127,60 @@
         "TXTRecords": [
           {
             "value": [
-              "[reference(resourceId('Microsoft.Web/sites', format('{0}-functionapp', variables('componentBase')))).customDomainVerificationId]"
+              "[reference('functionApp').customDomainVerificationId]"
             ]
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-functionapp', variables('componentBase')))]"
+        "functionApp"
       ]
     },
-    {
+    "dnsCname": {
       "type": "Microsoft.Network/dnsZones/CNAME",
       "apiVersion": "2018-05-01",
       "name": "[format('{0}/{1}', parameters('dnsZone'), parameters('applicationName'))]",
       "properties": {
         "TTL": 3600,
         "CNAMERecord": {
-          "cname": "[format('{0}.azurewebsites.net', format('{0}-functionapp', variables('componentBase')))]"
+          "cname": "[format('{0}.azurewebsites.net', resourceInfo('functionApp').name)]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-functionapp', variables('componentBase')))]"
+        "functionApp"
       ]
     },
-    {
+    "functionAppCustomHost": {
       "type": "Microsoft.Web/sites/hostNameBindings",
       "apiVersion": "2020-06-01",
-      "name": "[format('{0}/{1}.{2}', format('{0}-functionapp', variables('componentBase')), parameters('applicationName'), parameters('dnsZone'))]",
+      "name": "[format('{0}/{1}.{2}', resourceInfo('functionApp').name, parameters('applicationName'), parameters('dnsZone'))]",
       "properties": {
         "hostNameType": "Verified",
         "sslState": "Disabled",
         "customHostNameDnsRecordType": "CName",
-        "siteName": "[format('{0}-functionapp', variables('componentBase'))]"
+        "siteName": "[resourceInfo('functionApp').name]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/dnsZones/CNAME', split(format('{0}/{1}', parameters('dnsZone'), parameters('applicationName')), '/')[0], split(format('{0}/{1}', parameters('dnsZone'), parameters('applicationName')), '/')[1])]",
-        "[resourceId('Microsoft.Network/dnsZones/TXT', split(format('{0}/asuid.{1}', parameters('dnsZone'), parameters('applicationName')), '/')[0], split(format('{0}/asuid.{1}', parameters('dnsZone'), parameters('applicationName')), '/')[1])]",
-        "[resourceId('Microsoft.Web/sites', format('{0}-functionapp', variables('componentBase')))]"
+        "dnsCname",
+        "dnsTxt",
+        "functionApp"
       ]
     },
-    {
+    "functionAppCustomHostCertificate": {
       "type": "Microsoft.Web/certificates",
       "apiVersion": "2020-06-01",
       "name": "[format('{0}.{1}', parameters('applicationName'), parameters('dnsZone'))]",
       "location": "[variables('location')]",
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-asp', variables('componentBase')))]",
+        "serverFarmId": "[resourceInfo('hostingPlan').id]",
         "canonicalName": "[format('{0}.{1}', parameters('applicationName'), parameters('dnsZone'))]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites/hostNameBindings', split(format('{0}/{1}.{2}', format('{0}-functionapp', variables('componentBase')), parameters('applicationName'), parameters('dnsZone')), '/')[0], split(format('{0}/{1}.{2}', format('{0}-functionapp', variables('componentBase')), parameters('applicationName'), parameters('dnsZone')), '/')[1])]",
-        "[resourceId('Microsoft.Web/serverfarms', format('{0}-asp', variables('componentBase')))]"
+        "functionAppCustomHost",
+        "hostingPlan"
       ]
     },
-    {
+    "functionAppCustomHostEnable": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "[format('{0}-{1}-sni-enable', deployment().name, parameters('applicationName'))]",
@@ -191,13 +191,13 @@
         "mode": "Incremental",
         "parameters": {
           "functionAppName": {
-            "value": "[format('{0}-functionapp', variables('componentBase'))]"
+            "value": "[resourceInfo('functionApp').name]"
           },
           "functionAppHostname": {
-            "value": "[format('{0}.{1}', parameters('applicationName'), parameters('dnsZone'))]"
+            "value": "[resourceInfo('functionAppCustomHostCertificate').name]"
           },
           "certificateThumbprint": {
-            "value": "[reference(resourceId('Microsoft.Web/certificates', format('{0}.{1}', parameters('applicationName'), parameters('dnsZone')))).thumbprint]"
+            "value": "[reference('functionAppCustomHostCertificate').thumbprint]"
           }
         },
         "template": {
@@ -207,7 +207,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "11275464343508829008"
+              "templateHash": "824899710553427284"
             }
           },
           "parameters": {
@@ -222,8 +222,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "functionAppCustomHostEnable": {
               "type": "Microsoft.Web/sites/hostNameBindings",
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}', parameters('functionAppName'), parameters('functionAppHostname'))]",
@@ -232,13 +232,13 @@
                 "thumbprint": "[parameters('certificateThumbprint')]"
               }
             }
-          ]
+          }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-functionapp', variables('componentBase')))]",
-        "[resourceId('Microsoft.Web/certificates', format('{0}.{1}', parameters('applicationName'), parameters('dnsZone')))]"
+        "functionApp",
+        "functionAppCustomHostCertificate"
       ]
     }
-  ]
+  }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "657361687573006237"
+      "templateHash": "17167068249110287435"
     }
   },
   "parameters": {
@@ -110,8 +110,8 @@
     "appGwPublicIpName": "[format('{0}-pip', parameters('applicationGatewayName'))]",
     "appGwSize": "Standard_v2"
   },
-  "resources": [
-    {
+  "resources": {
+    "virtualNetwork": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-06-01",
       "name": "[parameters('virtualNetworkName')]",
@@ -132,7 +132,7 @@
         ]
       }
     },
-    {
+    "publicIP": {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2020-06-01",
       "name": "[variables('appGwPublicIpName')]",
@@ -144,7 +144,7 @@
         "publicIPAllocationMethod": "Static"
       }
     },
-    {
+    "applicationGateway": {
       "type": "Microsoft.Network/applicationGateways",
       "apiVersion": "2020-06-01",
       "name": "[parameters('applicationGatewayName')]",
@@ -163,7 +163,7 @@
             "name": "appGatewayIpConfig",
             "properties": {
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', resourceInfo('virtualNetwork').name, parameters('subnetName'))]"
               }
             }
           }
@@ -173,7 +173,7 @@
             "name": "appGatewayFrontendIP",
             "properties": {
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('appGwPublicIpName'))]"
+                "id": "[resourceInfo('publicIP').id]"
               }
             }
           }
@@ -237,9 +237,9 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('appGwPublicIpName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+        "publicIP",
+        "virtualNetwork"
       ]
     }
-  ]
+  }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "10741606016888264590"
+      "templateHash": "3427016729615108175"
     }
   },
   "parameters": {
@@ -29,8 +29,8 @@
   "variables": {
     "appServicePlanName": "[toLower(format('asp-{0}', parameters('appName')))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "appServicePlan": {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2020-06-01",
       "name": "[variables('appServicePlanName')]",
@@ -44,11 +44,11 @@
         "ProjectName": "[parameters('appName')]"
       }
     }
-  ],
+  },
   "outputs": {
     "appServicePlanID": {
       "type": "string",
-      "value": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      "value": "[resourceInfo('appServicePlan').id]"
     }
   }
 }

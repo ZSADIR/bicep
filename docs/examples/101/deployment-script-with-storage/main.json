@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "2936624157539141144"
+      "templateHash": "7805524383329871689"
     }
   },
   "parameters": {
@@ -38,8 +38,8 @@
   "variables": {
     "uamiId": "[resourceId(parameters('subId'), parameters('rgName'), 'Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uamiName'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "stg": {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2019-06-01",
       "name": "[format('dscript{0}', uniqueString(resourceGroup().id))]",
@@ -49,7 +49,7 @@
         "name": "Standard_LRS"
       }
     },
-    {
+    "dScript": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2019-10-01-preview",
       "name": "scriptWithStorage",
@@ -64,8 +64,8 @@
       "properties": {
         "azCliVersion": "2.0.80",
         "storageAccountSettings": {
-          "storageAccountName": "[format('dscript{0}', uniqueString(resourceGroup().id))]",
-          "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', format('dscript{0}', uniqueString(resourceGroup().id))), '2019-06-01').keys[0].value]"
+          "storageAccountName": "[resourceInfo('stg').name]",
+          "storageAccountKey": "[listKeys(resourceInfo('stg').id, resourceInfo('stg').apiVersion).keys[0].value]"
         },
         "scriptContent": "[parameters('scriptToExecute')]",
         "cleanupPreference": "OnSuccess",
@@ -73,14 +73,14 @@
         "forceUpdateTag": "[parameters('currentTime')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', format('dscript{0}', uniqueString(resourceGroup().id)))]"
+        "stg"
       ]
     }
-  ],
+  },
   "outputs": {
     "scriptLogs": {
       "type": "string",
-      "value": "[reference(format('{0}/logs/default', resourceId('Microsoft.Resources/deploymentScripts', 'scriptWithStorage')), '2019-10-01-preview', 'Full').properties.log]"
+      "value": "[reference(format('{0}/logs/default', resourceInfo('dScript').id), resourceInfo('dScript').apiVersion, 'Full').properties.log]"
     }
   }
 }

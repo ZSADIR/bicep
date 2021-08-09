@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "8956462873572192114"
+      "templateHash": "18250515996269048821"
     }
   },
   "parameters": {
@@ -50,7 +50,7 @@
   "functions": [],
   "variables": {
     "kubernetesVersion": "1.19.0",
-    "subnetRef": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), variables('subnetName'))]",
+    "subnetRef": "[format('{0}/subnets/{1}', resourceInfo('vn').id, variables('subnetName'))]",
     "addressPrefix": "20.0.0.0/16",
     "subnetName": "Subnet01",
     "subnetPrefix": "20.0.0.0/24",
@@ -62,8 +62,8 @@
     },
     "agentPoolName": "agentpool01"
   },
-  "resources": [
-    {
+  "resources": {
+    "vn": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-06-01",
       "name": "[variables('virtualNetworkName')]",
@@ -85,7 +85,7 @@
         ]
       }
     },
-    {
+    "aks": {
       "type": "Microsoft.ContainerService/managedClusters",
       "apiVersion": "2020-09-01",
       "name": "[parameters('clusterName')]",
@@ -120,18 +120,18 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
+        "vn"
       ]
     }
-  ],
+  },
   "outputs": {
     "id": {
       "type": "string",
-      "value": "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
+      "value": "[resourceInfo('aks').id]"
     },
     "apiServerAddress": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))).fqdn]"
+      "value": "[reference('aks').fqdn]"
     }
   }
 }

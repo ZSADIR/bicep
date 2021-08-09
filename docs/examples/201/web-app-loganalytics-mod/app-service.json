@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "11917327337287752626"
+      "templateHash": "18180504945285814535"
     }
   },
   "parameters": {
@@ -27,8 +27,8 @@
   "variables": {
     "webSiteName": "[toLower(format('wapp-{0}', parameters('appName')))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "appService": {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2020-06-01",
       "name": "[variables('webSiteName')]",
@@ -48,10 +48,10 @@
         }
       }
     },
-    {
+    "appServiceLogging": {
       "type": "Microsoft.Web/sites/config",
       "apiVersion": "2020-06-01",
-      "name": "[format('{0}/logs', variables('webSiteName'))]",
+      "name": "[format('{0}/logs', resourceInfo('appService').name)]",
       "properties": {
         "applicationLogs": {
           "fileSystem": {
@@ -72,27 +72,27 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('webSiteName'))]"
+        "appService"
       ]
     },
-    {
+    "appServiceAppSettings": {
       "type": "Microsoft.Web/sites/config",
       "apiVersion": "2020-06-01",
-      "name": "[format('{0}/appsettings', variables('webSiteName'))]",
+      "name": "[format('{0}/appsettings', resourceInfo('appService').name)]",
       "properties": {
         "APPINSIGHTS_INSTRUMENTATIONKEY": "[parameters('APPINSIGHTS_INSTRUMENTATIONKEY')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('webSiteName'))]"
+        "appService"
       ]
     },
-    {
+    "appServiceSiteExtension": {
       "type": "Microsoft.Web/sites/siteextensions",
       "apiVersion": "2020-06-01",
-      "name": "[format('{0}/Microsoft.ApplicationInsights.AzureWebsites', variables('webSiteName'))]",
+      "name": "[format('{0}/Microsoft.ApplicationInsights.AzureWebsites', resourceInfo('appService').name)]",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('webSiteName'))]"
+        "appService"
       ]
     }
-  ]
+  }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "11435914357705837168"
+      "templateHash": "9577785386418262712"
     }
   },
   "parameters": {
@@ -55,8 +55,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "hp": {
       "type": "Microsoft.DesktopVirtualization/hostPools",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('hostpoolName')]",
@@ -68,7 +68,7 @@
         "preferredAppGroupType": "[parameters('preferredAppGroupType')]"
       }
     },
-    {
+    "ag": {
       "type": "Microsoft.DesktopVirtualization/applicationGroups",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('appgroupName')]",
@@ -76,13 +76,13 @@
       "properties": {
         "friendlyName": "[parameters('appgroupNameFriendlyName')]",
         "applicationGroupType": "[parameters('applicationgrouptype')]",
-        "hostPoolArmPath": "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostpoolName'))]"
+        "hostPoolArmPath": "[resourceInfo('hp').id]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostpoolName'))]"
+        "hp"
       ]
     },
-    {
+    "ws": {
       "type": "Microsoft.DesktopVirtualization/workspaces",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('workspaceName')]",
@@ -90,12 +90,12 @@
       "properties": {
         "friendlyName": "[parameters('workspaceNameFriendlyName')]",
         "applicationGroupReferences": [
-          "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', parameters('appgroupName'))]"
+          "[resourceInfo('ag').id]"
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', parameters('appgroupName'))]"
+        "ag"
       ]
     }
-  ]
+  }
 }

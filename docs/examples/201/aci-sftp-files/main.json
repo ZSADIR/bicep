@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "5891391403317834058"
+      "templateHash": "5941677834022707330"
     }
   },
   "parameters": {
@@ -40,27 +40,27 @@
     "sftpEnvVariable": "[format('{0}:{1}:1001', parameters('sftpUser'), parameters('sftpPassword'))]",
     "storageAccountName": "[format('sftpstg{0}', uniqueString(resourceGroup().id))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "managedIdentity": {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2018-11-30",
       "name": "[variables('identityName')]",
       "location": "[parameters('location')]"
     },
-    {
+    "roleAssignment": {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2020-04-01-preview",
       "name": "[variables('roleAssignmentName')]",
       "properties": {
         "roleDefinitionId": "[variables('roleDefinitionId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identityName'))).principalId]",
+        "principalId": "[reference('managedIdentity').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identityName'))]"
+        "managedIdentity"
       ]
     },
-    {
+    "storageAccount": {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2020-08-01-preview",
       "name": "[variables('storageAccountName')]",
@@ -70,10 +70,10 @@
       },
       "kind": "StorageV2",
       "dependsOn": [
-        "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
+        "roleAssignment"
       ]
     },
-    {
+    "deploymentScript": {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2020-10-01",
       "name": "[variables('scriptName')]",
@@ -82,24 +82,24 @@
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
-          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identityName'))]": {}
+          "[resourceInfo('managedIdentity').id]": {}
         }
       },
       "properties": {
         "forceUpdateTag": "1",
         "azPowerShellVersion": "3.0",
-        "arguments": "[format(' -storageAccountName {0} -fileShareName {1} -resourceGroupName {2}', variables('storageAccountName'), parameters('fileShareName'), resourceGroup().name)]",
+        "arguments": "[format(' -storageAccountName {0} -fileShareName {1} -resourceGroupName {2}', resourceInfo('storageAccount').name, parameters('fileShareName'), resourceGroup().name)]",
         "scriptContent": "param([string] $storageAccountName, [string] $fileShareName, [string] $resourceGroupName) Get-AzStorageAccount -StorageAccountName $storageAccountName -ResourceGroupName $resourceGroupName | New-AzStorageShare -Name $fileShareName",
         "timeout": "PT5M",
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identityName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "managedIdentity",
+        "storageAccount"
       ]
     },
-    {
+    "containerGroup": {
       "type": "Microsoft.ContainerInstance/containerGroups",
       "apiVersion": "2019-12-01",
       "name": "[variables('sftpContainerGroupName')]",
@@ -154,22 +154,22 @@
             "azureFile": {
               "readOnly": false,
               "shareName": "[parameters('fileShareName')]",
-              "storageAccountName": "[variables('storageAccountName')]",
-              "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2020-08-01-preview').keys[0].value]"
+              "storageAccountName": "[resourceInfo('storageAccount').name]",
+              "storageAccountKey": "[listKeys(resourceInfo('storageAccount').id, resourceInfo('storageAccount').apiVersion).keys[0].value]"
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deploymentScripts', variables('scriptName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "deploymentScript",
+        "storageAccount"
       ]
     }
-  ],
+  },
   "outputs": {
     "containerIpv4Address": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', variables('sftpContainerGroupName'))).ipAddress.ip]"
+      "value": "[reference('containerGroup').ipAddress.ip]"
     }
   }
 }

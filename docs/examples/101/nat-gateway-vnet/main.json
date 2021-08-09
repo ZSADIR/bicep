@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "6286385429065988966"
+      "templateHash": "2166878617865330783"
     }
   },
   "parameters": {
@@ -64,12 +64,12 @@
     "publicIpName": "[format('{0}-ip', parameters('natGatewayName'))]",
     "publicIpAddresses": [
       {
-        "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))]"
+        "id": "[resourceInfo('publicIp').id]"
       }
     ]
   },
-  "resources": [
-    {
+  "resources": {
+    "publicIp": {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2020-06-01",
       "name": "[variables('publicIpName')]",
@@ -86,7 +86,7 @@
         }
       }
     },
-    {
+    "natGateway": {
       "type": "Microsoft.Network/natGateways",
       "apiVersion": "2020-06-01",
       "name": "[parameters('natGatewayName')]",
@@ -99,10 +99,10 @@
         "publicIpAddresses": "[if(not(empty(parameters('publicIpDns'))), variables('publicIpAddresses'), null())]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))]"
+        "publicIp"
       ]
     },
-    {
+    "vnet": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-06-01",
       "name": "[parameters('vnetName')]",
@@ -119,7 +119,7 @@
             "properties": {
               "addressPrefix": "[parameters('vnetSubnetPrefix')]",
               "natGateway": {
-                "id": "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]"
+                "id": "[resourceInfo('natGateway').id]"
               },
               "privateEndpointNetworkPolicies": "Enabled",
               "privateLinkServiceNetworkPolicies": "Enabled"
@@ -130,25 +130,25 @@
         "enableVmProtection": false
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]"
+        "natGateway"
       ]
     },
-    {
+    "subnet": {
       "type": "Microsoft.Network/virtualNetworks/subnets",
       "apiVersion": "2020-06-01",
       "name": "[format('{0}/{1}', parameters('vnetName'), 'mySubnet')]",
       "properties": {
         "addressPrefix": "[parameters('vnetSubnetPrefix')]",
         "natGateway": {
-          "id": "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]"
+          "id": "[resourceInfo('natGateway').id]"
         },
         "privateEndpointNetworkPolicies": "Enabled",
         "privateLinkServiceNetworkPolicies": "Enabled"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        "natGateway",
+        "vnet"
       ]
     }
-  ]
+  }
 }

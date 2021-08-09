@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "14706570379215138555"
+      "templateHash": "2747099004564973609"
     }
   },
   "parameters": {
@@ -29,8 +29,8 @@
       }
     ]
   },
-  "resources": [
-    {
+  "resources": {
+    "apimGroup": {
       "copy": {
         "name": "apimGroup",
         "count": "[length(variables('groupsSet'))]"
@@ -43,15 +43,15 @@
         "description": "[variables('groupsSet')[copyIndex()].groupDescription]"
       }
     }
-  ],
+  },
   "outputs": {
     "apimGroups": {
       "type": "array",
       "copy": {
         "count": "[length(variables('groupsSet'))]",
         "input": {
-          "groupId": "[resourceId('Microsoft.ApiManagement/service/groups', parameters('apimInstanceName'), variables('groupsSet')[copyIndex()].groupName)]",
-          "groupName": "[variables('groupsSet')[copyIndex()].groupName]"
+          "groupId": "[resourceInfo(format('apimGroup[{0}]', copyIndex())).id]",
+          "groupName": "[resourceInfo(format('apimGroup[{0}]', copyIndex())).name]"
         }
       }
     }

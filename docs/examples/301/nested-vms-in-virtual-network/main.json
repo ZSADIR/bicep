@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "8928993736616810089"
+      "templateHash": "5483555597691838103"
     }
   },
   "parameters": {
@@ -125,8 +125,8 @@
     "DSCInstallWindowsFeaturesUri": "[uri(parameters('_artifactsLocation'), format('dsc/dscinstallwindowsfeatures.zip{0}', parameters('_artifactsLocationSasToken')))]",
     "HVHostSetupScriptUri": "[uri(parameters('_artifactsLocation'), format('hvhostsetup.ps1{0}', parameters('_artifactsLocationSasToken')))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "publicIp": {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2019-04-01",
       "name": "[parameters('HostPublicIPAddressName')]",
@@ -141,35 +141,35 @@
         }
       }
     },
-    {
+    "natNsg": {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2019-04-01",
       "name": "[variables('NATSubnetNSGName')]",
       "location": "[parameters('location')]",
       "properties": {}
     },
-    {
+    "hyperVNsg": {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2019-04-01",
       "name": "[variables('hyperVSubnetNSGName')]",
       "location": "[parameters('location')]",
       "properties": {}
     },
-    {
+    "ghostedNsg": {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2019-04-01",
       "name": "[variables('ghostedSubnetNSGName')]",
       "location": "[parameters('location')]",
       "properties": {}
     },
-    {
+    "azureVmsSubnet": {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2019-04-01",
       "name": "[variables('azureVMsSubnetNSGName')]",
       "location": "[parameters('location')]",
       "properties": {}
     },
-    {
+    "vnet": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2019-04-01",
       "name": "[parameters('virtualNetworkName')]",
@@ -186,7 +186,7 @@
             "properties": {
               "addressPrefix": "[parameters('NATSubnetPrefix')]",
               "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NATSubnetNSGName'))]"
+                "id": "[resourceInfo('natNsg').id]"
               }
             }
           },
@@ -195,7 +195,7 @@
             "properties": {
               "addressPrefix": "[parameters('hyperVSubnetPrefix')]",
               "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('hyperVSubnetNSGName'))]"
+                "id": "[resourceInfo('hyperVNsg').id]"
               }
             }
           },
@@ -204,7 +204,7 @@
             "properties": {
               "addressPrefix": "[parameters('ghostedSubnetPrefix')]",
               "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('ghostedSubnetNSGName'))]"
+                "id": "[resourceInfo('ghostedNsg').id]"
               }
             }
           },
@@ -213,24 +213,24 @@
             "properties": {
               "addressPrefix": "[parameters('azureVMsSubnetPrefix')]",
               "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('azureVMsSubnetNSGName'))]"
+                "id": "[resourceInfo('azureVmsSubnet').id]"
               },
               "routeTable": {
-                "id": "[reference(resourceId('Microsoft.Resources/deployments', 'udrDeploy'), '2019-10-01').outputs.udrId.value]"
+                "id": "[reference('createAzureVmUdr').outputs.udrId.value]"
               }
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('azureVMsSubnetNSGName'))]",
-        "[resourceId('Microsoft.Resources/deployments', 'udrDeploy')]",
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('ghostedSubnetNSGName'))]",
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('hyperVSubnetNSGName'))]",
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NATSubnetNSGName'))]"
+        "azureVmsSubnet",
+        "createAzureVmUdr",
+        "ghostedNsg",
+        "hyperVNsg",
+        "natNsg"
       ]
     },
-    {
+    "hostVm": {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2019-03-01",
       "name": "[parameters('HostVirtualMachineName')]",
@@ -275,13 +275,13 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[reference(resourceId('Microsoft.Resources/deployments', 'createNic1'), '2019-10-01').outputs.nicId.value]",
+              "id": "[reference('createNic1').outputs.nicId.value]",
               "properties": {
                 "primary": true
               }
             },
             {
-              "id": "[reference(resourceId('Microsoft.Resources/deployments', 'createNic2'), '2019-10-01').outputs.nicId.value]",
+              "id": "[reference('createNic2').outputs.nicId.value]",
               "properties": {
                 "primary": false
               }
@@ -290,14 +290,14 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'createNic1')]",
-        "[resourceId('Microsoft.Resources/deployments', 'createNic2')]"
+        "createNic1",
+        "createNic2"
       ]
     },
-    {
+    "vmExtension": {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2019-03-01",
-      "name": "[format('{0}/InstallWindowsFeatures', parameters('HostVirtualMachineName'))]",
+      "name": "[format('{0}/InstallWindowsFeatures', resourceInfo('hostVm').name)]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Powershell",
@@ -314,13 +314,13 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines', parameters('HostVirtualMachineName'))]"
+        "hostVm"
       ]
     },
-    {
+    "hostVmSetupExtension": {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2019-03-01",
-      "name": "[format('{0}/HVHOSTSetup', parameters('HostVirtualMachineName'))]",
+      "name": "[format('{0}/HVHOSTSetup', resourceInfo('hostVm').name)]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -331,16 +331,16 @@
           "fileUris": [
             "[variables('HVHostSetupScriptUri')]"
           ],
-          "commandToExecute": "[format('powershell -ExecutionPolicy Unrestricted -File HVHostSetup.ps1 -NIC1IPAddress {0} -NIC2IPAddress {1} -GhostedSubnetPrefix {2} -VirtualNetworkPrefix {3}', reference(resourceId('Microsoft.Resources/deployments', 'createNic1'), '2019-10-01').outputs.assignedIp.value, reference(resourceId('Microsoft.Resources/deployments', 'createNic2'), '2019-10-01').outputs.assignedIp.value, parameters('ghostedSubnetPrefix'), parameters('virtualNetworkAddressPrefix'))]"
+          "commandToExecute": "[format('powershell -ExecutionPolicy Unrestricted -File HVHostSetup.ps1 -NIC1IPAddress {0} -NIC2IPAddress {1} -GhostedSubnetPrefix {2} -VirtualNetworkPrefix {3}', reference('createNic1').outputs.assignedIp.value, reference('createNic2').outputs.assignedIp.value, parameters('ghostedSubnetPrefix'), parameters('virtualNetworkAddressPrefix'))]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'createNic1')]",
-        "[resourceId('Microsoft.Resources/deployments', 'createNic2')]",
-        "[resourceId('Microsoft.Compute/virtualMachines', parameters('HostVirtualMachineName'))]"
+        "createNic1",
+        "createNic2",
+        "hostVm"
       ]
     },
-    {
+    "createNic1": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "createNic1",
@@ -354,10 +354,10 @@
             "value": "[parameters('HostNetworkInterface1Name')]"
           },
           "subnetId": {
-            "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('NATSubnetName'))]"
+            "value": "[format('{0}/subnets/{1}', resourceInfo('vnet').id, parameters('NATSubnetName'))]"
           },
           "pipId": {
-            "value": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('HostPublicIPAddressName'))]"
+            "value": "[resourceInfo('publicIp').id]"
           }
         },
         "template": {
@@ -367,7 +367,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "17428818831523905567"
+              "templateHash": "10580980010374758392"
             }
           },
           "parameters": {
@@ -403,8 +403,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "nic": {
               "type": "Microsoft.Network/networkInterfaces",
               "apiVersion": "2020-06-01",
               "name": "[parameters('nicName')]",
@@ -427,25 +427,25 @@
                 "enableIPForwarding": "[parameters('enableIPForwarding')]"
               }
             }
-          ],
+          },
           "outputs": {
             "nicId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+              "value": "[resourceInfo('nic').id]"
             },
             "assignedIp": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))).ipConfigurations[0].properties.privateIPAddress]"
+              "value": "[reference('nic').ipConfigurations[0].properties.privateIPAddress]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', parameters('HostPublicIPAddressName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+        "publicIp",
+        "vnet"
       ]
     },
-    {
+    "createNic2": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "createNic2",
@@ -462,7 +462,7 @@
             "value": true
           },
           "subnetId": {
-            "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('hyperVSubnetName'))]"
+            "value": "[format('{0}/subnets/{1}', resourceInfo('vnet').id, parameters('hyperVSubnetName'))]"
           }
         },
         "template": {
@@ -472,7 +472,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "17428818831523905567"
+              "templateHash": "10580980010374758392"
             }
           },
           "parameters": {
@@ -508,8 +508,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "nic": {
               "type": "Microsoft.Network/networkInterfaces",
               "apiVersion": "2020-06-01",
               "name": "[parameters('nicName')]",
@@ -532,24 +532,24 @@
                 "enableIPForwarding": "[parameters('enableIPForwarding')]"
               }
             }
-          ],
+          },
           "outputs": {
             "nicId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+              "value": "[resourceInfo('nic').id]"
             },
             "assignedIp": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))).ipConfigurations[0].properties.privateIPAddress]"
+              "value": "[reference('nic').ipConfigurations[0].properties.privateIPAddress]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+        "vnet"
       ]
     },
-    {
+    "updateNic1": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "updateNic1",
@@ -563,16 +563,16 @@
             "value": "Static"
           },
           "staticIpAddress": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'createNic1'), '2019-10-01').outputs.assignedIp.value]"
+            "value": "[reference('createNic1').outputs.assignedIp.value]"
           },
           "nicName": {
             "value": "[parameters('HostNetworkInterface1Name')]"
           },
           "subnetId": {
-            "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('NATSubnetName'))]"
+            "value": "[format('{0}/subnets/{1}', resourceInfo('vnet').id, parameters('NATSubnetName'))]"
           },
           "pipId": {
-            "value": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('HostPublicIPAddressName'))]"
+            "value": "[resourceInfo('publicIp').id]"
           }
         },
         "template": {
@@ -582,7 +582,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "17428818831523905567"
+              "templateHash": "10580980010374758392"
             }
           },
           "parameters": {
@@ -618,8 +618,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "nic": {
               "type": "Microsoft.Network/networkInterfaces",
               "apiVersion": "2020-06-01",
               "name": "[parameters('nicName')]",
@@ -642,26 +642,26 @@
                 "enableIPForwarding": "[parameters('enableIPForwarding')]"
               }
             }
-          ],
+          },
           "outputs": {
             "nicId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+              "value": "[resourceInfo('nic').id]"
             },
             "assignedIp": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))).ipConfigurations[0].properties.privateIPAddress]"
+              "value": "[reference('nic').ipConfigurations[0].properties.privateIPAddress]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'createNic1')]",
-        "[resourceId('Microsoft.Network/publicIPAddresses', parameters('HostPublicIPAddressName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+        "createNic1",
+        "publicIp",
+        "vnet"
       ]
     },
-    {
+    "updateNic2": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "updateNic2",
@@ -675,7 +675,7 @@
             "value": "Static"
           },
           "staticIpAddress": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'createNic2'), '2019-10-01').outputs.assignedIp.value]"
+            "value": "[reference('createNic2').outputs.assignedIp.value]"
           },
           "nicName": {
             "value": "[parameters('HostNetworkInterface2Name')]"
@@ -684,7 +684,7 @@
             "value": true
           },
           "subnetId": {
-            "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('hyperVSubnetName'))]"
+            "value": "[format('{0}/subnets/{1}', resourceInfo('vnet').id, parameters('hyperVSubnetName'))]"
           }
         },
         "template": {
@@ -694,7 +694,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "17428818831523905567"
+              "templateHash": "10580980010374758392"
             }
           },
           "parameters": {
@@ -730,8 +730,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "nic": {
               "type": "Microsoft.Network/networkInterfaces",
               "apiVersion": "2020-06-01",
               "name": "[parameters('nicName')]",
@@ -754,25 +754,25 @@
                 "enableIPForwarding": "[parameters('enableIPForwarding')]"
               }
             }
-          ],
+          },
           "outputs": {
             "nicId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
+              "value": "[resourceInfo('nic').id]"
             },
             "assignedIp": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))).ipConfigurations[0].properties.privateIPAddress]"
+              "value": "[reference('nic').ipConfigurations[0].properties.privateIPAddress]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'createNic2')]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+        "createNic2",
+        "vnet"
       ]
     },
-    {
+    "createAzureVmUdr": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "udrDeploy",
@@ -793,7 +793,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "13461864852699596542"
+              "templateHash": "16943307974021375823"
             }
           },
           "parameters": {
@@ -814,8 +814,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "udr": {
               "type": "Microsoft.Network/routeTables",
               "apiVersion": "2020-06-01",
               "name": "[parameters('udrName')]",
@@ -824,17 +824,17 @@
                 "routes": "[if(equals(parameters('addressPrefix'), ''), null(), createArray(createObject('name', 'Nested-VMs', 'properties', createObject('addressPrefix', parameters('addressPrefix'), 'nextHopType', 'VirtualAppliance', 'nextHopIpAddress', parameters('nextHopAddress')))))]"
               }
             }
-          ],
+          },
           "outputs": {
             "udrId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/routeTables', parameters('udrName'))]"
+              "value": "[resourceInfo('udr').id]"
             }
           }
         }
       }
     },
-    {
+    "updateAzureVmUdr": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "udrUpdate",
@@ -851,7 +851,7 @@
             "value": "[parameters('ghostedSubnetPrefix')]"
           },
           "nextHopAddress": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'createNic2'), '2019-10-01').outputs.assignedIp.value]"
+            "value": "[reference('createNic2').outputs.assignedIp.value]"
           }
         },
         "template": {
@@ -861,7 +861,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "13461864852699596542"
+              "templateHash": "16943307974021375823"
             }
           },
           "parameters": {
@@ -882,8 +882,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "udr": {
               "type": "Microsoft.Network/routeTables",
               "apiVersion": "2020-06-01",
               "name": "[parameters('udrName')]",
@@ -892,18 +892,18 @@
                 "routes": "[if(equals(parameters('addressPrefix'), ''), null(), createArray(createObject('name', 'Nested-VMs', 'properties', createObject('addressPrefix', parameters('addressPrefix'), 'nextHopType', 'VirtualAppliance', 'nextHopIpAddress', parameters('nextHopAddress')))))]"
               }
             }
-          ],
+          },
           "outputs": {
             "udrId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/routeTables', parameters('udrName'))]"
+              "value": "[resourceInfo('udr').id]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'createNic2')]"
+        "createNic2"
       ]
     }
-  ]
+  }
 }

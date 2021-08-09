@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "5864153784304662289"
+      "templateHash": "5650112644737138578"
     }
   },
   "parameters": {
@@ -51,14 +51,14 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "ddosProtectionPlan": {
       "type": "Microsoft.Network/ddosProtectionPlans",
       "apiVersion": "2020-11-01",
       "name": "[parameters('ddosProtectionPlanName')]",
       "location": "[parameters('location')]"
     },
-    {
+    "virtualNetwork": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-11-01",
       "name": "[parameters('virtualNetworkName')]",
@@ -79,12 +79,12 @@
         ],
         "enableDdosProtection": "[parameters('ddosProtectionPlanEnabled')]",
         "ddosProtectionPlan": {
-          "id": "[resourceId('Microsoft.Network/ddosProtectionPlans', parameters('ddosProtectionPlanName'))]"
+          "id": "[resourceInfo('ddosProtectionPlan').id]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/ddosProtectionPlans', parameters('ddosProtectionPlanName'))]"
+        "ddosProtectionPlan"
       ]
     }
-  ]
+  }
 }

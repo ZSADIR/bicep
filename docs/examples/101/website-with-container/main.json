@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "14151585724625675119"
+      "templateHash": "6885330435548592836"
     }
   },
   "parameters": {
@@ -43,8 +43,8 @@
     "websiteName": "[format('{0}-site', parameters('name'))]",
     "farmName": "[format('{0}-farm', parameters('name'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "site": {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2020-06-01",
       "name": "[variables('websiteName')]",
@@ -71,13 +71,13 @@
           ],
           "linuxFxVersion": "[format('DOCKER|{0}.azurecr.io/{1}', parameters('acrName'), parameters('dockerImageAndTag'))]"
         },
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('farmName'))]"
+        "serverFarmId": "[resourceInfo('farm').id]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('farmName'))]"
+        "farm"
       ]
     },
-    {
+    "farm": {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2020-06-01",
       "name": "[variables('farmName')]",
@@ -93,15 +93,15 @@
         "reserved": true
       }
     }
-  ],
+  },
   "outputs": {
     "publicUrl": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Web/sites', variables('websiteName'))).defaultHostName]"
+      "value": "[reference('site').defaultHostName]"
     },
     "ftpUser": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Web/sites', variables('websiteName'))).ftpUsername]"
+      "value": "[reference('site').ftpUsername]"
     }
   }
 }

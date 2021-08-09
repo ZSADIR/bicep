@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "4010150104196921853"
+      "templateHash": "5542179696328271199"
     }
   },
   "parameters": {
@@ -65,8 +65,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "hp": {
       "type": "Microsoft.DesktopVirtualization/hostPools",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('hostpoolName')]",
@@ -78,7 +78,7 @@
         "preferredAppGroupType": "[parameters('preferredAppGroupType')]"
       }
     },
-    {
+    "ag": {
       "type": "Microsoft.DesktopVirtualization/applicationGroups",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('appgroupName')]",
@@ -86,13 +86,13 @@
       "properties": {
         "friendlyName": "[parameters('appgroupNameFriendlyName')]",
         "applicationGroupType": "[parameters('applicationgrouptype')]",
-        "hostPoolArmPath": "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostpoolName'))]"
+        "hostPoolArmPath": "[resourceInfo('hp').id]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostpoolName'))]"
+        "hp"
       ]
     },
-    {
+    "ws": {
       "type": "Microsoft.DesktopVirtualization/workspaces",
       "apiVersion": "2019-12-10-preview",
       "name": "[parameters('workspaceName')]",
@@ -100,14 +100,14 @@
       "properties": {
         "friendlyName": "[parameters('workspaceNameFriendlyName')]",
         "applicationGroupReferences": [
-          "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', parameters('appgroupName'))]"
+          "[resourceInfo('ag').id]"
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', parameters('appgroupName'))]"
+        "ag"
       ]
     },
-    {
+    "avdmonitor": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "LAWorkspace",
@@ -128,10 +128,10 @@
             "value": "[parameters('logAnalyticsWorkspaceSku')]"
           },
           "hostpoolName": {
-            "value": "[parameters('hostpoolName')]"
+            "value": "[resourceInfo('hp').name]"
           },
           "workspaceName": {
-            "value": "[parameters('workspaceName')]"
+            "value": "[resourceInfo('ws').name]"
           },
           "avdBackplaneResourceGroup": {
             "value": "[parameters('avdBackplaneResourceGroup')]"
@@ -144,7 +144,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "3864819428445360434"
+              "templateHash": "13693417187204453101"
             }
           },
           "parameters": {
@@ -170,8 +170,8 @@
             }
           },
           "functions": [],
-          "resources": [
-            {
+          "resources": {
+            "avdla": {
               "type": "Microsoft.OperationalInsights/workspaces",
               "apiVersion": "2020-08-01",
               "name": "[parameters('logAnalyticsWorkspaceName')]",
@@ -182,7 +182,7 @@
                 }
               }
             },
-            {
+            "avdmonitor": {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2019-10-01",
               "name": "myBicepLADiag",
@@ -194,7 +194,7 @@
                 "mode": "Incremental",
                 "parameters": {
                   "logAnalyticsWorkspaceID": {
-                    "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+                    "value": "[resourceInfo('avdla').id]"
                   },
                   "hostpoolName": {
                     "value": "[parameters('hostpoolName')]"
@@ -210,7 +210,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "dev",
-                      "templateHash": "1455955442339016099"
+                      "templateHash": "16900059712492763166"
                     }
                   },
                   "parameters": {
@@ -225,8 +225,8 @@
                     }
                   },
                   "functions": [],
-                  "resources": [
-                    {
+                  "resources": {
+                    "avdhpds": {
                       "type": "Microsoft.Insights/diagnosticSettings",
                       "apiVersion": "2017-05-01-preview",
                       "scope": "[format('Microsoft.DesktopVirtualization/hostPools/{0}', parameters('hostpoolName'))]",
@@ -257,7 +257,7 @@
                         ]
                       }
                     },
-                    {
+                    "avdwsds": {
                       "type": "Microsoft.Insights/diagnosticSettings",
                       "apiVersion": "2017-05-01-preview",
                       "scope": "[format('Microsoft.DesktopVirtualization/workspaces/{0}', parameters('workspaceName'))]",
@@ -284,20 +284,20 @@
                         ]
                       }
                     }
-                  ]
+                  }
                 }
               },
               "dependsOn": [
-                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+                "avdla"
               ]
             }
-          ]
+          }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostpoolName'))]",
-        "[resourceId('Microsoft.DesktopVirtualization/workspaces', parameters('workspaceName'))]"
+        "hp",
+        "ws"
       ]
     }
-  ]
+  }
 }

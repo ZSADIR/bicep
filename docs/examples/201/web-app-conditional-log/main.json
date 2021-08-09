@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "7236915425399922761"
+      "templateHash": "13974302360519511414"
     }
   },
   "parameters": {
@@ -19,8 +19,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "webappModule": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
       "name": "webAppPlanDeploy",
@@ -41,7 +41,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "1240988414714428155"
+              "templateHash": "12685560899926062030"
             }
           },
           "parameters": {
@@ -66,8 +66,8 @@
             "appServicePlanName": "[toLower(format('asp-{0}', parameters('appName')))]",
             "webSiteName": "[toLower(format('wapp-{0}', parameters('appName')))]"
           },
-          "resources": [
-            {
+          "resources": {
+            "appServicePlan": {
               "type": "Microsoft.Web/serverfarms",
               "apiVersion": "2020-06-01",
               "name": "[variables('appServicePlanName')]",
@@ -81,7 +81,7 @@
                 "ProjectName": "[parameters('appName')]"
               }
             },
-            {
+            "appService": {
               "type": "Microsoft.Web/sites",
               "apiVersion": "2020-06-01",
               "name": "[variables('webSiteName')]",
@@ -94,20 +94,20 @@
                 "ProjectName": "[parameters('appName')]"
               },
               "properties": {
-                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+                "serverFarmId": "[resourceInfo('appServicePlan').id]",
                 "httpsOnly": true,
                 "siteConfig": {
                   "minTlsVersion": "1.2"
                 }
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+                "appServicePlan"
               ]
             },
-            {
+            "appServiceLogging": {
               "type": "Microsoft.Web/sites/config",
               "apiVersion": "2020-06-01",
-              "name": "[format('{0}/logs', variables('webSiteName'))]",
+              "name": "[format('{0}/logs', resourceInfo('appService').name)]",
               "properties": {
                 "applicationLogs": {
                   "fileSystem": {
@@ -128,20 +128,20 @@
                 }
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', variables('webSiteName'))]"
+                "appService"
               ]
             }
-          ],
+          },
           "outputs": {
             "appServiceName": {
               "type": "string",
-              "value": "[variables('webSiteName')]"
+              "value": "[resourceInfo('appService').name]"
             }
           }
         }
       }
     },
-    {
+    "loggingModule": {
       "condition": "[parameters('logging')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
@@ -153,7 +153,7 @@
         "mode": "Incremental",
         "parameters": {
           "appName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'webAppPlanDeploy'), '2019-10-01').outputs.appServiceName.value]"
+            "value": "[reference('webappModule').outputs.appServiceName.value]"
           }
         },
         "template": {
@@ -163,7 +163,7 @@
             "_generator": {
               "name": "bicep",
               "version": "dev",
-              "templateHash": "13009186405517622186"
+              "templateHash": "6790588844285665143"
             }
           },
           "parameters": {
@@ -180,28 +180,28 @@
             "appInsightName": "[toLower(format('appi-{0}', parameters('appName')))]",
             "logAnalyticsName": "[toLower(format('la-{0}', parameters('appName')))]"
           },
-          "resources": [
-            {
+          "resources": {
+            "appServiceAppSettings": {
               "type": "Microsoft.Web/sites/config",
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/appsettings', parameters('appName'))]",
               "properties": {
-                "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightName'))).InstrumentationKey]"
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference('appInsights').InstrumentationKey]"
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Insights/components', variables('appInsightName'))]",
-                "[resourceId('Microsoft.Web/sites/siteextensions', split(format('{0}/Microsoft.ApplicationInsights.AzureWebsites', parameters('appName')), '/')[0], split(format('{0}/Microsoft.ApplicationInsights.AzureWebsites', parameters('appName')), '/')[1])]"
+                "appInsights",
+                "appServiceSiteExtension"
               ]
             },
-            {
+            "appServiceSiteExtension": {
               "type": "Microsoft.Web/sites/siteextensions",
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/Microsoft.ApplicationInsights.AzureWebsites', parameters('appName'))]",
               "dependsOn": [
-                "[resourceId('Microsoft.Insights/components', variables('appInsightName'))]"
+                "appInsights"
               ]
             },
-            {
+            "appInsights": {
               "type": "Microsoft.Insights/components",
               "apiVersion": "2020-02-02-preview",
               "name": "[variables('appInsightName')]",
@@ -212,13 +212,13 @@
               },
               "properties": {
                 "Application_Type": "web",
-                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+                "WorkspaceResourceId": "[resourceInfo('logAnalyticsWorkspace').id]"
               },
               "dependsOn": [
-                "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+                "logAnalyticsWorkspace"
               ]
             },
-            {
+            "logAnalyticsWorkspace": {
               "type": "Microsoft.OperationalInsights/workspaces",
               "apiVersion": "2020-03-01-preview",
               "name": "[variables('logAnalyticsName')]",
@@ -233,12 +233,12 @@
                 "retentionInDays": 120
               }
             }
-          ]
+          }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'webAppPlanDeploy')]"
+        "webappModule"
       ]
     }
-  ]
+  }
 }

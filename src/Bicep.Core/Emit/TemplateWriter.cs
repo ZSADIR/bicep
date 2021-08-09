@@ -263,7 +263,7 @@ namespace Bicep.Core.Emit
         private void EmitResources(JsonTextWriter jsonWriter, ExpressionEmitter emitter)
         {
             jsonWriter.WritePropertyName("resources");
-            jsonWriter.WriteStartArray();
+            jsonWriter.WriteStartObject();
 
             foreach (var resource in this.context.SemanticModel.AllResources)
             {
@@ -280,7 +280,7 @@ namespace Bicep.Core.Emit
                 this.EmitModule(jsonWriter, moduleSymbol, emitter);
             }
 
-            jsonWriter.WriteEndArray();
+            jsonWriter.WriteEndObject();
         }
 
         private long? GetBatchSize(StatementSyntax decoratedSyntax)
@@ -297,6 +297,7 @@ namespace Bicep.Core.Emit
 
         private void EmitResource(JsonTextWriter jsonWriter, ResourceMetadata resource, ExpressionEmitter emitter)
         {
+            jsonWriter.WritePropertyName(resource.Symbol.Name);
             jsonWriter.WriteStartObject();
 
             // Note: conditions STACK with nesting.
@@ -444,6 +445,7 @@ namespace Bicep.Core.Emit
 
         private void EmitModule(JsonTextWriter jsonWriter, ModuleSymbol moduleSymbol, ExpressionEmitter emitter)
         {
+            jsonWriter.WritePropertyName(moduleSymbol.Name);
             jsonWriter.WriteStartObject();
 
             var body = moduleSymbol.DeclaringModule.Value;
@@ -567,32 +569,39 @@ namespace Bicep.Core.Emit
                 switch (dependency.Resource)
                 {
                     case ResourceSymbol resourceDependency:
-                        if (resourceDependency.IsCollection && dependency.IndexExpression == null)
-                        {
-                            // dependency is on the entire resource collection
-                            // write the name of the resource collection as the dependency
-                            jsonWriter.WriteValue(resourceDependency.DeclaringResource.Name.IdentifierName);
-
-                            break;
-                        }
-
                         var resource = context.SemanticModel.ResourceMetadata.TryLookup(resourceDependency.DeclaringSyntax) ??
                             throw new ArgumentException($"Unable to find resource metadata for dependency '{dependency.Resource.Name}'");
 
-                        emitter.EmitResourceIdReference(resource, dependency.IndexExpression, newContext);
+                        switch ((resourceDependency.IsCollection, dependency.IndexExpression))
+                        {
+                            case (false, _):
+                                jsonWriter.WriteValue(resourceDependency.Name);
+                                break;
+                            // dependency is on the entire resource collection
+                            // write the name of the resource collection as the dependency
+                            case (true, null):
+                                jsonWriter.WriteValue(resourceDependency.Name);
+                                break;
+                            case (true, {} indexExpression):
+                                emitter.EmitDependsOnArrayItem(resource, indexExpression, newContext);
+                                break;
+                        }
                         break;
                     case ModuleSymbol moduleDependency:
-                        if (moduleDependency.IsCollection && dependency.IndexExpression == null)
+                        switch ((moduleDependency.IsCollection, dependency.IndexExpression))
                         {
-                            // dependency is on the entire module collection
-                            // write the name of the module collection as the dependency
-                            jsonWriter.WriteValue(moduleDependency.DeclaringModule.Name.IdentifierName);
-
-                            break;
+                            case (false, _):
+                                jsonWriter.WriteValue(moduleDependency.Name);
+                                break;
+                            // dependency is on the entire resource collection
+                            // write the name of the resource collection as the dependency
+                            case (true, null):
+                                jsonWriter.WriteValue(moduleDependency.Name);
+                                break;
+                            case (true, {} indexExpression):
+                                emitter.EmitDependsOnArrayItem(moduleDependency, indexExpression, newContext);
+                                break;
                         }
-
-                        emitter.EmitResourceIdReference(moduleDependency, dependency.IndexExpression, newContext);
-
                         break;
                     default:
                         throw new InvalidOperationException($"Found dependency '{dependency.Resource.Name}' of unexpected type {dependency.GetType()}");

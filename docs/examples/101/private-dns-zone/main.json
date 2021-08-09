@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "dev",
-      "templateHash": "17310351777819035411"
+      "templateHash": "3717620438640502323"
     }
   },
   "parameters": {
@@ -39,8 +39,8 @@
     }
   },
   "functions": [],
-  "resources": [
-    {
+  "resources": {
+    "virtualNetwork": {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-06-01",
       "name": "[parameters('vnetName')]",
@@ -53,38 +53,38 @@
         }
       }
     },
-    {
+    "subnet": {
       "type": "Microsoft.Network/virtualNetworks/subnets",
       "apiVersion": "2020-06-01",
-      "name": "[format('{0}/{1}', parameters('vnetName'), parameters('subnetName'))]",
+      "name": "[format('{0}/{1}', resourceInfo('virtualNetwork').name, parameters('subnetName'))]",
       "properties": {
         "addressPrefix": "[parameters('subnetAddressPrefix')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        "virtualNetwork"
       ]
     },
-    {
+    "privateDnsZone": {
       "type": "Microsoft.Network/privateDnsZones",
       "apiVersion": "2018-09-01",
       "name": "[parameters('privateDnsZoneName')]",
       "location": "global"
     },
-    {
+    "virtualNetworkLink": {
       "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
       "apiVersion": "2018-09-01",
-      "name": "[format('{0}/{1}-link', parameters('privateDnsZoneName'), parameters('privateDnsZoneName'))]",
+      "name": "[format('{0}/{1}-link', resourceInfo('privateDnsZone').name, resourceInfo('privateDnsZone').name)]",
       "location": "global",
       "properties": {
         "registrationEnabled": "[parameters('autoVmRegistration')]",
         "virtualNetwork": {
-          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+          "id": "[resourceInfo('virtualNetwork').id]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZoneName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        "privateDnsZone",
+        "virtualNetwork"
       ]
     }
-  ]
+  }
 }
